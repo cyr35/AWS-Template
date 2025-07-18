@@ -1,380 +1,303 @@
 {
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Infraestructura segura y escalable: VPC + Subred pública + EC2 con IP pública.",
-    "Parameters": {
-        "KeyName": {
-            "Type": "AWS::EC2::KeyPair::KeyName",
-            "Description": "Nombre de un par de claves EC2 existente para acceso SSH a la instancia EC2."
-        },
-        "EC2InstanceType": {
-            "Type": "String",
-            "Default": "t2.micro",
-            "Description": "Tipo de instancia EC2 para el servidor web."
-        }
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Plantilla de CloudFormation para la infraestructura de red y servidor web del proyecto INFO2350. Incluye VPC, subredes, gateways, tablas de rutas y un servidor web EC2.",
+  "Parameters": {
+    "InstanceType": {
+      "Description": "Tipo de instancia EC2 para el servidor web.",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t2.micro",
+        "t2.small",
+        "t3.micro",
+        "t3.small"
+      ]
     },
-    "Resources": {
-        "MiVPC": {
-            "Type": "AWS::EC2::VPC",
-            "Properties": {
-                "CidrBlock": "10.0.0.0/16",
-                "EnableDnsSupport": true,
-                "EnableDnsHostnames": true,
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "VPC-Group5"
-                    }
-                ]
-            }
-        },
-        "SubredPublica": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "CidrBlock": "10.0.1.0/24",
-                "AvailabilityZone": {
-                    "Fn::Select": [
-                        0,
-                        {
-                            "Fn::GetAZs": ""
-                        }
-                    ]
-                },
-                "MapPublicIpOnLaunch": true,
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "SubredPublica-AZ1"
-                    }
-                ]
-            }
-        },
-        "SubredPublica2": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "CidrBlock": "10.0.2.0/24",
-                "AvailabilityZone": {
-                    "Fn::Select": [
-                        1,
-                        {
-                            "Fn::GetAZs": ""
-                        }
-                    ]
-                },
-                "MapPublicIpOnLaunch": true,
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "SubredPublica-AZ2"
-                    }
-                ]
-            }
-        },
-        "SubredPrivada1": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "CidrBlock": "10.0.10.0/24",
-                "AvailabilityZone": {
-                    "Fn::Select": [
-                        0,
-                        {
-                            "Fn::GetAZs": ""
-                        }
-                    ]
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "SubredPrivada-AZ1"
-                    }
-                ]
-            }
-        },
-        "SubredPrivada2": {
-            "Type": "AWS::EC2::Subnet",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "CidrBlock": "10.0.11.0/24",
-                "AvailabilityZone": {
-                    "Fn::Select": [
-                        1,
-                        {
-                            "Fn::GetAZs": ""
-                        }
-                    ]
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "SubredPrivada-AZ2"
-                    }
-                ]
-            }
-        },
-        "InternetGateway": {
-            "Type": "AWS::EC2::InternetGateway",
-            "Properties": {
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "IGW-Group5"
-                    }
-                ]
-            }
-        },
-        "VPCGatewayAttachment": {
-            "Type": "AWS::EC2::VPCGatewayAttachment",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "InternetGatewayId": {
-                    "Ref": "InternetGateway"
-                }
-            }
-        },
-        "EIPNatGateway": {
-            "Type": "AWS::EC2::EIP",
-            "Properties": {
-                "Domain": "vpc"
-            }
-        },
-        "NatGateway": {
-            "Type": "AWS::EC2::NatGateway",
-            "Properties": {
-                "AllocationId": {
-                    "Fn::GetAtt": [
-                        "EIPNatGateway",
-                        "AllocationId"
-                    ]
-                },
-                "SubnetId": {
-                    "Ref": "SubredPublica"
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "NATGateway"
-                    }
-                ]
-            }
-        },
-        "TablaRutasPublica": {
-            "Type": "AWS::EC2::RouteTable",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "TablaRutasPublica"
-                    }
-                ]
-            }
-        },
-        "RutaInternet": {
-            "Type": "AWS::EC2::Route",
-            "DependsOn": "VPCGatewayAttachment",
-            "Properties": {
-                "RouteTableId": {
-                    "Ref": "TablaRutasPublica"
-                },
-                "DestinationCidrBlock": "0.0.0.0/0",
-                "GatewayId": {
-                    "Ref": "InternetGateway"
-                }
-            }
-        },
-        "AsociacionSubredPublica1": {
-            "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "SubredPublica"
-                },
-                "RouteTableId": {
-                    "Ref": "TablaRutasPublica"
-                }
-            }
-        },
-        "AsociacionSubredPublica2": {
-            "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "SubredPublica2"
-                },
-                "RouteTableId": {
-                    "Ref": "TablaRutasPublica"
-                }
-            }
-        },
-        "TablaRutasPrivada": {
-            "Type": "AWS::EC2::RouteTable",
-            "Properties": {
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "TablaRutasPrivada"
-                    }
-                ]
-            }
-        },
-        "RutaNatGateway": {
-            "Type": "AWS::EC2::Route",
-            "DependsOn": "NatGateway",
-            "Properties": {
-                "RouteTableId": {
-                    "Ref": "TablaRutasPrivada"
-                },
-                "DestinationCidrBlock": "0.0.0.0/0",
-                "NatGatewayId": {
-                    "Ref": "NatGateway"
-                }
-            }
-        },
-        "AsociacionSubredPrivada1": {
-            "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "SubredPrivada1"
-                },
-                "RouteTableId": {
-                    "Ref": "TablaRutasPrivada"
-                }
-            }
-        },
-        "AsociacionSubredPrivada2": {
-            "Type": "AWS::EC2::SubnetRouteTableAssociation",
-            "Properties": {
-                "SubnetId": {
-                    "Ref": "SubredPrivada2"
-                },
-                "RouteTableId": {
-                    "Ref": "TablaRutasPrivada"
-                }
-            }
-        },
-        "GrupoSeguridadWeb": {
-            "Type": "AWS::EC2::SecurityGroup",
-            "Properties": {
-                "GroupName": "Web-SG-Group5",
-                "GroupDescription": "Permitir HTTP y SSH desde cualquier lugar",
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "SecurityGroupIngress": [
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 22,
-                        "ToPort": 22,
-                        "CidrIp": "0.0.0.0/0"
-                    },
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 80,
-                        "ToPort": 80,
-                        "CidrIp": "0.0.0.0/0"
-                    },
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 443,
-                        "ToPort": 443,
-                        "CidrIp": "0.0.0.0/0"
-                    }
-                ],
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "Web-SG-Group5"
-                    }
-                ]
-            }
-        },
-        "InstanciaWeb": {
-            "Type": "AWS::EC2::Instance",
-            "Properties": {
-                "ImageId": "ami-0c55b159cbfafe1f0",
-                "InstanceType": {
-                    "Ref": "EC2InstanceType"
-                },
-                "KeyName": {
-                    "Ref": "KeyName"
-                },
-                "NetworkInterfaces": [
-                    {
-                        "AssociatePublicIpAddress": true,
-                        "DeviceIndex": "0",
-                        "SubnetId": {
-                            "Ref": "SubredPublica"
-                        },
-                        "GroupSet": [
-                            {
-                                "Ref": "GrupoSeguridadWeb"
-                            }
-                        ]
-                    }
-                ],
-                "UserData": {
-                    "Fn::Base64": "#!/bin/bash\nyum update -y\nyum install -y httpd\nsystemctl start httpd\nsystemctl enable httpd\necho \"<h1>¡Mi Aplicación Web funciona!</h1><p>Conectada a una base de datos segura.</p>\" > /var/www/html/index.html"
-                },
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "ServidorWeb"
-                    }
-                ]
-            }
-        }
+    "KeyName": {
+      "Description": "Nombre del par de claves EC2 para permitir el acceso SSH a la instancia.",
+      "Type": "AWS::EC2::KeyPair::KeyName"
     },
-    "Outputs": {
-        "VPCId": {
-            "Description": "El ID de la VPC creada.",
-            "Value": {
-                "Ref": "MiVPC"
-            }
-        },
-        "PublicSubnet1Id": {
-            "Description": "El ID de la primera subred pública.",
-            "Value": {
-                "Ref": "SubredPublica"
-            }
-        },
-        "PrivateSubnet1Id": {
-            "Description": "El ID de la primera subred privada.",
-            "Value": {
-                "Ref": "SubredPrivada1"
-            }
-        },
-        "WebServerPublicIP": {
-            "Description": "La IP pública del Servidor Web.",
-            "Value": {
-                "Fn::GetAtt": [
-                    "InstanciaWeb",
-                    "PublicIp"
-                ]
-            }
-        },
-        "WebServerPublicDNS": {
-            "Description": "El DNS público del Servidor Web.",
-            "Value": {
-                "Fn::GetAtt": [
-                    "InstanciaWeb",
-                    "PublicDnsName"
-                ]
-            }
-        }
+    "LatestAmiId": {
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Description": "ID de la AMI más reciente para Amazon Linux 2.",
+      "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
     }
+  },
+  "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Project-VPC"
+          }
+        ]
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Public-Subnet"
+          }
+        ]
+      }
+    },
+    "PrivateSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Private-Subnet"
+          }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Project-IGW"
+          }
+        ]
+      }
+    },
+    "VPCGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Public-Route-Table"
+          }
+        ]
+      }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": "VPCGatewayAttachment",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PublicSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        }
+      }
+    },
+    "PrivateRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Private-Route-Table"
+          }
+        ]
+      }
+    },
+    "PrivateSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PrivateSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "WebServerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Habilita acceso HTTP desde cualquier lugar y SSH desde IPs de confianza",
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "WebServer-SG"
+          }
+        ]
+      }
+    },
+    "DatabaseSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Permite el acceso a la base de datos solo desde el grupo de seguridad del servidor web",
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 3306,
+            "ToPort": 3306,
+            "SourceSecurityGroupId": {
+              "Ref": "WebServerSecurityGroup"
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "Database-SG"
+          }
+        ]
+      }
+    },
+    "WebServerInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "ImageId": {
+          "Ref": "LatestAmiId"
+        },
+        "NetworkInterfaces": [
+          {
+            "AssociatePublicIpAddress": "true",
+            "DeviceIndex": "0",
+            "GroupSet": [
+              {
+                "Ref": "WebServerSecurityGroup"
+              }
+            ],
+            "SubnetId": {
+              "Ref": "PublicSubnet"
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": "#!/bin/bash\nyum update -y\nyum install -y httpd\nsystemctl start httpd\nsystemctl enable httpd\necho '<h1>Servidor web funcionando desde CloudFormation</h1>' > /var/www/html/index.html"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "WebServer-Instance"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "VPCId": {
+      "Description": "ID de la VPC creada",
+      "Value": {
+        "Ref": "VPC"
+      }
+    },
+    "PublicSubnetId": {
+      "Description": "ID de la Subred Pública",
+      "Value": {
+        "Ref": "PublicSubnet"
+      }
+    },
+    "PrivateSubnetId": {
+      "Description": "ID de la Subred Privada",
+      "Value": {
+        "Ref": "PrivateSubnet"
+      }
+    },
+    "WebServerPublicIP": {
+      "Description": "IP pública de la instancia del servidor web",
+      "Value": {
+        "Fn::GetAtt": [
+          "WebServerInstance",
+          "PublicIp"
+        ]
+      }
+    },
+    "WebServerSecurityGroupId": {
+        "Description": "ID del Grupo de Seguridad del Servidor Web",
+        "Value": { "Ref": "WebServerSecurityGroup" }
+    },
+    "DatabaseSecurityGroupId": {
+        "Description": "ID del Grupo de Seguridad de la Base de Datos (para referencia manual)",
+        "Value": { "Ref": "DatabaseSecurityGroup" }
+    }
+  }
 }
