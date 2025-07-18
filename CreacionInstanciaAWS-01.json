@@ -1,23 +1,7 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Infraestructura segura y escalable: VPC + Subred pública + EC2 con IP pública + MySQL RDS en subred privada.",
+    "Description": "Infraestructura segura y escalable: VPC + Subred pública + EC2 con IP pública.",
     "Parameters": {
-        "DBInstanceIdentifier": {
-            "Type": "String",
-            "Default": "proyecto-mysql-db",
-            "Description": "Identificador para la instancia de base de datos MySQL."
-        },
-        "DBUsername": {
-            "Type": "String",
-            "Description": "Nombre de usuario maestro para la base de datos RDS.",
-            "NoEcho": true
-        },
-        "DBPassword": {
-            "Type": "String",
-            "Description": "Contraseña maestra para la base de datos RDS (mínimo 8 caracteres).",
-            "MinLength": 8,
-            "NoEcho": true
-        },
         "KeyName": {
             "Type": "AWS::EC2::KeyPair::KeyName",
             "Description": "Nombre de un par de claves EC2 existente para acceso SSH a la instancia EC2."
@@ -319,96 +303,10 @@
                 ]
             }
         },
-        "GrupoSeguridadDB": {
-            "Type": "AWS::EC2::SecurityGroup",
-            "Properties": {
-                "GroupName": "DB-SG-Group5",
-                "GroupDescription": "Permitir acceso a MySQL solo desde el Security Group del Servidor Web",
-                "VpcId": {
-                    "Ref": "MiVPC"
-                },
-                "SecurityGroupIngress": [
-                    {
-                        "IpProtocol": "tcp",
-                        "FromPort": 3306,
-                        "ToPort": 3306,
-                        "SourceSecurityGroupId": {
-                            "Fn::GetAtt": [
-                                "GrupoSeguridadWeb",
-                                "GroupId"
-                            ]
-                        }
-                    }
-                ],
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "DB-SG-Group4"
-                    }
-                ]
-            }
-        },
-        "DBSubnetGroup": {
-            "Type": "AWS::RDS::DBSubnetGroup",
-            "Properties": {
-                "DBSubnetGroupDescription": "Grupo de subredes para la base de datos MySQL en subredes privadas.",
-                "SubnetIds": [
-                    {
-                        "Ref": "SubredPrivada1"
-                    },
-                    {
-                        "Ref": "SubredPrivada2"
-                    }
-                ],
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "DBSubnetGroup"
-                    }
-                ]
-            }
-        },
-        "RDSInstance": {
-            "Type": "AWS::RDS::DBInstance",
-            "Properties": {
-                "DBInstanceIdentifier": {
-                    "Ref": "DBInstanceIdentifier"
-                },
-                "Engine": "mysql",
-                "DBInstanceClass": "db.t2.micro",
-                "AllocatedStorage": 20,
-                "MasterUsername": {
-                    "Ref": "DBUsername"
-                },
-                "MasterUserPassword": {
-                    "Ref": "DBPassword"
-                },
-                "VPCSecurityGroups": [
-                    {
-                        "Fn::GetAtt": [
-                            "GrupoSeguridadDB",
-                            "GroupId"
-                        ]
-                    }
-                ],
-                "DBSubnetGroupName": {
-                    "Ref": "DBSubnetGroup"
-                },
-                "PubliclyAccessible": false,
-                "MultiAZ": false,
-                "StorageType": "gp2",
-                "Tags": [
-                    {
-                        "Key": "Name",
-                        "Value": "RDS-MySQL-Instance"
-                    }
-                ]
-            }
-        },
         "InstanciaWeb": {
             "Type": "AWS::EC2::Instance",
             "Properties": {
-                "ImageId": "ami-016e142ef19d43e7f",
+                "ImageId": "ami-0c55b159cbfafe1f0",
                 "InstanceType": {
                     "Ref": "EC2InstanceType"
                 },
@@ -475,24 +373,6 @@
                 "Fn::GetAtt": [
                     "InstanciaWeb",
                     "PublicDnsName"
-                ]
-            }
-        },
-        "RDSInstanceEndpoint": {
-            "Description": "El Endpoint (dirección) de la instancia de base de datos MySQL.",
-            "Value": {
-                "Fn::GetAtt": [
-                    "RDSInstance",
-                    "Endpoint.Address"
-                ]
-            }
-        },
-        "RDSInstancePort": {
-            "Description": "El puerto de la instancia de base de datos MySQL.",
-            "Value": {
-                "Fn::GetAtt": [
-                    "RDSInstance",
-                    "Endpoint.Port"
                 ]
             }
         }
